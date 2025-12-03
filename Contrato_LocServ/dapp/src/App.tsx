@@ -28,6 +28,16 @@ interface Transaction {
   status: 'success' | 'failed' | 'pending';
   txHash?: string;
   error?: string;
+  userRating?: number; // User's rating for the service (1-5)
+}
+
+interface Service {
+  id: string;
+  title: string;
+  desc: string;
+  price: string;
+  provider: string;
+  rating: number;
 }
 
 // A simple, reusable logo component
@@ -47,10 +57,12 @@ export default function App() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [myServices, setMyServices] = useState<Service[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [route, setRoute] = useState<NavKey>("dashboard");
   const [showTxModal, setShowTxModal] = useState(false);
   const [currentTxHash, setCurrentTxHash] = useState<string | null>(null);
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [themeDark, setThemeDark] = useState<boolean>(() => {
     // Check for saved theme preference
     if (typeof window !== 'undefined') {
@@ -113,9 +125,9 @@ export default function App() {
 
       if (response && response.hash) {
         pushLog(`✅ Contrato creado: ${contractId}`);
-        pushLog(`🔗 Hash: ${response.hash}`);
-        pushLog(`📊 Estado: ${response.status}`);
-        pushLog(`💰 Fee gastado: ~0.0001 XLM`);
+        pushLog(` Hash: ${response.hash}`);
+        pushLog(` Estado: ${response.status}`);
+        pushLog(` Fee gastado: ~0.0001 XLM`);
 
         // Show success modal
         setCurrentTxHash(response.hash);
@@ -178,6 +190,11 @@ export default function App() {
     }
   };
 
+  const disconnectWallet = () => {
+    setPublicKey(null);
+    pushLog("Wallet desconectada");
+  };
+
   useEffect(() => {
     // Auto-connect on mount if Freighter is available
     const autoConnect = async () => {
@@ -208,22 +225,32 @@ export default function App() {
     }
   }, [themeDark]);
 
-  const demoServices = [
-    { id: "S1", title: "Electricista Profesional", desc: "Instalaciones y reparaciones eléctricas seguras.", price: "50 XLM" },
-    { id: "S2", title: "Clases de Guitarra Acústica", desc: "Aprende desde cero. Todos los niveles.", price: "75 XLM" },
-    { id: "S3", title: "Plomería de Emergencia", desc: "Solución a fugas, atascos y más, 24/7.", price: "100 XLM" },
-    { id: "S4", title: "Diseño Gráfico y Branding", desc: "Logos, publicidad y material de marca.", price: "200 XLM" },
-    { id: "S5", title: "Asesoría de Jardinería", desc: "Crea y mantén tu jardín ideal.", price: "40 XLM" },
-    { id: "S6", title: "Reparación de Computadoras", desc: "Hardware y software, virus y lentitud.", price: "80 XLM" },
-    { id: "S7", title: "Clases de Yoga", desc: "Sesiones personalizadas o grupales. Mejora tu bienestar.", price: "60 XLM" },
-    { id: "S8", title: "Carpintería a Medida", desc: "Muebles personalizados y reparaciones de madera.", price: "150 XLM" },
-    { id: "S9", title: "Fotografía Profesional", desc: "Eventos, retratos y productos. Calidad garantizada.", price: "300 XLM" },
-    { id: "S10", title: "Limpieza de Hogar", desc: "Servicio completo de limpieza residencial.", price: "90 XLM" },
-    { id: "S11", title: "Clases de Inglés", desc: "Aprende inglés con profesor certificado.", price: "70 XLM" },
-    { id: "S12", title: "Asesoría Legal", desc: "Consultas legales en derecho civil y familiar.", price: "250 XLM" },
-    { id: "S13", title: "Desarrollo Web", desc: "Sitios web modernos y responsivos.", price: "500 XLM" },
-    { id: "S14", title: "Paseo de Mascotas", desc: "Cuido y paseo de perros. Servicio confiable.", price: "30 XLM" },
-    { id: "S15", title: "Clases de Cocina", desc: "Aprende recetas mexicanas e internacionales.", price: "85 XLM" },
+  const demoServices: Service[] = [
+    { id: "S1", title: "Electricista Profesional", desc: "Instalaciones y reparaciones eléctricas seguras.", price: "1,000 XLM", provider: "Carlos Mendoza", rating: 4.8 },
+    { id: "S2", title: "Clases de Guitarra Acústica", desc: "Aprende desde cero. Todos los niveles.", price: "1,500 XLM", provider: "Ana García", rating: 4.9 },
+    { id: "S3", title: "Plomería de Emergencia", desc: "Solución a fugas, atascos y más, 24/7.", price: "2,000 XLM", provider: "Roberto Silva", rating: 4.7 },
+    { id: "S4", title: "Diseño Gráfico y Branding", desc: "Logos, publicidad y material de marca.", price: "4,000 XLM", provider: "Laura Martínez", rating: 5.0 },
+    { id: "S5", title: "Asesoría de Jardinería", desc: "Crea y mantén tu jardín ideal.", price: "800 XLM", provider: "Pedro Ramírez", rating: 4.6 },
+    { id: "S6", title: "Reparación de Computadoras", desc: "Hardware y software, virus y lentitud.", price: "1,600 XLM", provider: "Miguel Torres", rating: 4.8 },
+    { id: "S7", title: "Clases de Yoga", desc: "Sesiones personalizadas o grupales. Mejora tu bienestar.", price: "1,200 XLM", provider: "Sofia López", rating: 4.9 },
+    { id: "S8", title: "Carpintería a Medida", desc: "Muebles personalizados y reparaciones de madera.", price: "3,000 XLM", provider: "Jorge Hernández", rating: 4.7 },
+    { id: "S9", title: "Fotografía Profesional", desc: "Eventos, retratos y productos. Calidad garantizada.", price: "6,000 XLM", provider: "Diana Ruiz", rating: 5.0 },
+    { id: "S10", title: "Limpieza de Hogar", desc: "Servicio completo de limpieza residencial.", price: "1,800 XLM", provider: "María Flores", rating: 4.8 },
+    { id: "S11", title: "Clases de Inglés", desc: "Aprende inglés con profesor certificado.", price: "1,400 XLM", provider: "John Smith", rating: 4.9 },
+    { id: "S12", title: "Asesoría Legal", desc: "Consultas legales en derecho civil y familiar.", price: "5,000 XLM", provider: "Lic. Patricia Gómez", rating: 4.8 },
+    { id: "S13", title: "Desarrollo Web", desc: "Sitios web modernos y responsivos.", price: "10,000 XLM", provider: "David Chen", rating: 5.0 },
+    { id: "S14", title: "Paseo de Mascotas", desc: "Cuido y paseo de perros. Servicio confiable.", price: "600 XLM", provider: "Andrea Morales", rating: 4.7 },
+    { id: "S15", title: "Clases de Cocina", desc: "Aprende recetas mexicanas e internacionales.", price: "1,700 XLM", provider: "Chef Mario Sánchez", rating: 4.9 },
+    { id: "S16", title: "Entrenador Personal", desc: "Rutinas personalizadas y seguimiento nutricional.", price: "2,400 XLM", provider: "Luis Vargas", rating: 4.8 },
+    { id: "S17", title: "Clases de Piano", desc: "Desde principiantes hasta avanzados.", price: "1,800 XLM", provider: "Elena Rodríguez", rating: 4.9 },
+    { id: "S18", title: "Servicio de Pintura", desc: "Pintura interior y exterior de casas y oficinas.", price: "3,600 XLM", provider: "Antonio Reyes", rating: 4.6 },
+    { id: "S19", title: "Asesoría Contable", desc: "Declaraciones fiscales y contabilidad para negocios.", price: "4,400 XLM", provider: "C.P. Rosa Jiménez", rating: 4.8 },
+    { id: "S20", title: "Clases de Francés", desc: "Aprende francés con profesor nativo.", price: "1,900 XLM", provider: "Pierre Dubois", rating: 4.7 },
+    { id: "S21", title: "Diseño de Interiores", desc: "Transforma tus espacios con estilo profesional.", price: "7,000 XLM", provider: "Isabella Navarro", rating: 5.0 },
+    { id: "S22", title: "Reparación de Electrodomésticos", desc: "Lavadoras, refrigeradores, estufas y más.", price: "2,200 XLM", provider: "Fernando Castro", rating: 4.7 },
+    { id: "S23", title: "Clases de Programación", desc: "Python, JavaScript, React. Todos los niveles.", price: "3,000 XLM", provider: "Alex Kim", rating: 4.9 },
+    { id: "S24", title: "Servicio de Mudanza", desc: "Mudanzas locales seguras y rápidas.", price: "5,600 XLM", provider: "Transportes Veloz", rating: 4.6 },
+    { id: "S25", title: "Tutoría Matemáticas", desc: "Clases particulares de matemáticas nivel secundaria y preparatoria.", price: "1,300 XLM", provider: "Prof. Carmen Ortiz", rating: 4.8 },
   ];
 
   function Header() {
@@ -242,17 +269,59 @@ export default function App() {
           >
             {themeDark ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6 text-indigo-500" />}
           </button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={connectFreighter}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors"
-          >
-            <WalletIcon className="w-5 h-5" />
-            <span className="text-sm font-medium">
-              {publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : "Conectar Wallet"}
-            </span>
-          </motion.button>
+
+          {!publicKey ? (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={connectFreighter}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors"
+            >
+              <WalletIcon className="w-5 h-5" />
+              <span className="text-sm font-medium">Conectar Wallet</span>
+            </motion.button>
+          ) : (
+            <div className="relative group">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg shadow-green-500/30 hover:bg-green-700 transition-colors"
+              >
+                <WalletIcon className="w-5 h-5" />
+                <span className="text-sm font-medium">
+                  {publicKey.slice(0, 4)}...{publicKey.slice(-4)}
+                </span>
+              </motion.button>
+
+              {/* Dropdown menu */}
+              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Wallet Conectada</p>
+                  <p className="text-sm font-mono text-gray-700 dark:text-gray-300 break-all">{publicKey}</p>
+                </div>
+                <div className="p-2">
+                  <button
+                    onClick={connectFreighter}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Cambiar Cuenta
+                  </button>
+                  <button
+                    onClick={disconnectWallet}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Desconectar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
     );
@@ -367,6 +436,30 @@ export default function App() {
     );
   }
 
+  // Star Rating Component
+  function StarRating({ rating }: { rating: number }) {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <svg
+            key={star}
+            className={`w-4 h-4 ${star <= Math.floor(rating)
+              ? 'text-yellow-400 fill-current'
+              : star - 0.5 <= rating
+                ? 'text-yellow-400 fill-current opacity-50'
+                : 'text-gray-300 dark:text-gray-600'
+              }`}
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+        <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">{rating.toFixed(1)}</span>
+      </div>
+    );
+  }
+
   function Dashboard() {
     const StatCard = ({ title, value, icon: Icon, delay = 0 }: { title: string, value: string | number, icon: ElementType, delay?: number }) => (
       <motion.div
@@ -405,18 +498,24 @@ export default function App() {
                 className="bg-white dark:bg-gray-900 p-5 rounded-2xl shadow-sm overflow-hidden flex flex-col"
               >
                 <div className="flex-grow">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-bold text-lg text-gray-800 dark:text-white">{s.title}</h4>
-                    <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full">{s.price}</span>
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-lg text-gray-800 dark:text-white leading-tight">{s.title}</h4>
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-full whitespace-nowrap">{s.price}</span>
                   </div>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{s.desc}</p>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Por: {s.provider}</p>
+                    <StarRating rating={s.rating} />
+                  </div>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{s.desc}</p>
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                   <motion.button
                     onClick={() => handleHire(s.id, s.price)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="w-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 font-semibold py-2 rounded-lg transition-colors"
+                    className="w-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 font-semibold py-2 rounded-lg transition-colors text-sm"
                   >
                     Solicitar
                   </motion.button>
@@ -440,23 +539,30 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-lg transition-shadow p-5 flex flex-col text-center items-center"
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-lg transition-shadow p-5 flex flex-col"
             >
               <div className="flex-grow">
-                <h3 className="font-bold text-lg text-gray-800 dark:text-white">{s.title}</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{s.desc}</p>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-gray-800 dark:text-white leading-tight">{s.title}</h3>
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-full whitespace-nowrap">{s.price}</span>
+                </div>
+
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Por: {s.provider}</p>
+                  <StarRating rating={s.rating} />
+                </div>
+
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4">{s.desc}</p>
               </div>
-              <div className="mt-4">
-                <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{s.price}</p>
-                <motion.button
-                  onClick={() => handleHire(s.id, s.price)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="mt-4 w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                >
-                  Contratar
-                </motion.button>
-              </div>
+
+              <motion.button
+                onClick={() => handleHire(s.id, s.price)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="mt-auto w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Contratar
+              </motion.button>
             </motion.div>
           ))}
         </div>
@@ -465,45 +571,140 @@ export default function App() {
   }
 
   function ProfilePage() {
+    const [newService, setNewService] = useState({ title: '', desc: '', price: '' });
+
+    const handleAddService = () => {
+      if (!newService.title || !newService.desc || !newService.price) {
+        pushLog("⚠️ Por favor completa todos los campos del servicio");
+        return;
+      }
+
+      const service: Service = {
+        id: `USER-S${Date.now()}`,
+        title: newService.title,
+        desc: newService.desc,
+        price: newService.price,
+        provider: publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : "Tú",
+        rating: 5.0 // New services start with 5.0
+      };
+
+      setMyServices(prev => [...prev, service]);
+      setNewService({ title: '', desc: '', price: '' });
+      setShowAddServiceModal(false);
+      pushLog(`✅ Servicio "${service.title}" agregado exitosamente`);
+    };
+
     return (
-      <div>
-        <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Mi Perfil</h2>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="max-w-2xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-8"
-        >
-          <div className="flex flex-col items-center">
-            <div className="w-24 h-24 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mb-4">
-              <UserIcon className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Mi Perfil</h2>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="max-w-2xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-8"
+          >
+            <div className="flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mb-4">
+                <UserIcon className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Mi Wallet</h3>
+              <div className="mt-4 p-4 w-full bg-gray-50 dark:bg-gray-800 rounded-lg text-center break-all font-mono text-sm text-gray-600 dark:text-gray-300">
+                {publicKey ? publicKey : "No has conectado tu wallet"}
+              </div>
+              {!publicKey && (
+                <motion.button
+                  onClick={connectFreighter}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="mt-6 bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Conectar ahora
+                </motion.button>
+              )}
+              {publicKey && (
+                <motion.button
+                  onClick={handleRegister}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="mt-6 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Registrarse (Demo)
+                </motion.button>
+              )}
             </div>
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Mi Wallet</h3>
-            <div className="mt-4 p-4 w-full bg-gray-50 dark:bg-gray-800 rounded-lg text-center break-all font-mono text-sm text-gray-600 dark:text-gray-300">
-              {publicKey ? publicKey : "No has conectado tu wallet"}
-            </div>
-            {!publicKey && (
-              <motion.button
-                onClick={connectFreighter}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="mt-6 bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-              >
-                Conectar ahora
-              </motion.button>
-            )}
+          </motion.div>
+        </div>
+
+        {/* My Services Section */}
+        <div>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Mis Servicios</h3>
             {publicKey && (
               <motion.button
-                onClick={handleRegister}
+                onClick={() => setShowAddServiceModal(true)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="mt-6 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
               >
-                Registrarse (Demo)
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ofrecer Servicio
               </motion.button>
             )}
           </div>
-        </motion.div>
+
+          {!publicKey ? (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-12 text-center">
+              <p className="text-gray-500 dark:text-gray-400">Conecta tu wallet para ofrecer servicios</p>
+            </div>
+          ) : myServices.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-12 text-center">
+              <CubeTransparentIcon className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">Aún no has agregado servicios</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">Haz clic en "Ofrecer Servicio" para comenzar</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {myServices.map((s, i) => (
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-lg transition-shadow p-5 flex flex-col"
+                >
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-lg text-gray-800 dark:text-white leading-tight">{s.title}</h4>
+                      <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-full whitespace-nowrap">{s.price}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Por: {s.provider}</p>
+                      <StarRating rating={s.rating} />
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{s.desc}</p>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setMyServices(prev => prev.filter(srv => srv.id !== s.id));
+                        pushLog(`🗑️ Servicio "${s.title}" eliminado`);
+                      }}
+                      className="flex-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-semibold py-2 rounded-lg transition-colors text-sm hover:bg-red-100 dark:hover:bg-red-900/30"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -604,12 +805,72 @@ export default function App() {
                         <p className="text-sm text-red-700 dark:text-red-300">{tx.error}</p>
                       </div>
                     )}
+
+                    {/* Rating Section - Only for successful service contracts */}
+                    {tx.type === 'contract' && tx.status === 'success' && (
+                      <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                          {tx.userRating ? '⭐ Tu calificación' : '📝 Califica este servicio'}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <InteractiveRating
+                            rating={tx.userRating || 0}
+                            onRate={(rating) => {
+                              setTransactions(prev =>
+                                prev.map(t =>
+                                  t.id === tx.id ? { ...t, userRating: rating } : t
+                                )
+                              );
+                              pushLog(`⭐ Has calificado "${tx.serviceName}" con ${rating} estrellas`);
+                            }}
+                          />
+                          {tx.userRating && (
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {tx.userRating === 5 ? '¡Excelente!' :
+                                tx.userRating === 4 ? 'Muy bueno' :
+                                  tx.userRating === 3 ? 'Bueno' :
+                                    tx.userRating === 2 ? 'Regular' : 'Mejorable'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
             ))}
           </div>
         )}
+      </div>
+    );
+  }
+
+  // Interactive Rating Component
+  function InteractiveRating({ rating, onRate }: { rating: number, onRate: (rating: number) => void }) {
+    const [hover, setHover] = useState(0);
+
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            onClick={() => onRate(star)}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            className="transition-transform hover:scale-125 focus:outline-none"
+          >
+            <svg
+              className={`w-8 h-8 cursor-pointer transition-colors ${star <= (hover || rating)
+                ? 'text-yellow-400 fill-current'
+                : 'text-gray-300 dark:text-gray-600'
+                }`}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+          </button>
+        ))}
       </div>
     );
   }
@@ -672,15 +933,6 @@ export default function App() {
                                 {currentTxHash}
                               </p>
                             </div>
-
-                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                💡 <strong>Nota sobre Freighter:</strong> Las invocaciones de contratos inteligentes no siempre aparecen en el historial de Freighter, pero están 100% confirmadas en la blockchain.
-                              </p>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                Puedes ver esta transacción en Stellar Expert haciendo clic abajo.
-                              </p>
-                            </div>
                           </>
                         )}
                       </div>
@@ -709,6 +961,154 @@ export default function App() {
           </div>
         </Dialog>
       </Transition.Root>
+
+      {/* Add Service Modal */}
+      <Transition.Root show={showAddServiceModal} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={setShowAddServiceModal}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 z-10 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                enterTo="opacity-100 translate-y-0 sm:scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+                leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+              >
+                <Dialog.Panel className="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-900 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                  <div>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
+                      <CubeTransparentIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div className="mt-3 text-center sm:mt-5">
+                      <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
+                        Ofrecer Nuevo Servicio
+                      </Dialog.Title>
+                      <AddServiceForm
+                        onSubmit={(service) => {
+                          setMyServices(prev => [...prev, service]);
+                          setShowAddServiceModal(false);
+                          pushLog(`✅ Servicio "${service.title}" publicado`);
+                        }}
+                        onCancel={() => setShowAddServiceModal(false)}
+                        publicKey={publicKey}
+                        pushLog={pushLog}
+                      />
+                    </div>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition.Root>
     </div>
   );
+
+  function AddServiceForm({ onSubmit, onCancel, publicKey, pushLog }: {
+    onSubmit: (service: Service) => void,
+    onCancel: () => void,
+    publicKey: string | null,
+    pushLog: (msg: string) => void
+  }) {
+    const [title, setTitle] = useState('');
+    const [desc, setDesc] = useState('');
+    const [price, setPrice] = useState('');
+
+    const handleSubmit = () => {
+      if (!title || !desc || !price) {
+        pushLog("⚠️ Por favor completa todos los campos");
+        return;
+      }
+
+      const service: Service = {
+        id: `USER-S${Date.now()}`,
+        title,
+        desc,
+        price,
+        provider: publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : "Tú",
+        rating: 5.0
+      };
+
+      onSubmit(service);
+      setTitle('');
+      setDesc('');
+      setPrice('');
+    };
+
+    return (
+      <>
+        <div className="mt-4 space-y-4">
+          <div className="text-left">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Título del Servicio
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Ej: Clases de Piano"
+            />
+          </div>
+
+          <div className="text-left">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Descripción
+            </label>
+            <textarea
+              rows={3}
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Describe tu servicio..."
+            />
+          </div>
+
+          <div className="text-left">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Precio (en XLM)
+            </label>
+            <input
+              type="text"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Ej: 100 XLM"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+          <button
+            type="button"
+            className="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:col-start-2"
+            onClick={handleSubmit}
+          >
+            Publicar Servicio
+          </button>
+          <button
+            type="button"
+            className="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 sm:col-start-1 sm:mt-0"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+        </div>
+      </>
+    );
+  }
 }
