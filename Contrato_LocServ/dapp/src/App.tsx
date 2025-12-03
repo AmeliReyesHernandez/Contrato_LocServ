@@ -184,17 +184,28 @@ export default function App() {
 
       pushLog("Iniciando conexión con Freighter...");
       const connectedResponse = await isConnected();
+
       if (!connectedResponse.isConnected) {
-        pushLog("Solicitando permiso de acceso...");
-        await requestAccess();
+        pushLog("⚠️ Freighter no está instalado o detectado");
+        return;
       }
 
-      const addressResponse = await getAddress();
-      if (addressResponse.address) {
+      // Intentar obtener la dirección
+      let addressResponse = await getAddress();
+
+      // Si no obtenemos dirección, forzamos la solicitud de acceso
+      if (!addressResponse || !addressResponse.address) {
+        pushLog("Solicitando permiso de acceso al sitio...");
+        await requestAccess();
+        // Intentar obtener dirección nuevamente después de pedir permisos
+        addressResponse = await getAddress();
+      }
+
+      if (addressResponse && addressResponse.address) {
         pushLog(`Wallet conectada: ${addressResponse.address}`);
         setPublicKey(addressResponse.address);
       } else {
-        pushLog("No se pudo obtener la clave pública.");
+        pushLog("❌ No se pudo obtener la clave pública. Por favor abre Freighter y autoriza este sitio.");
       }
     } catch (err: any) {
       console.error(err);

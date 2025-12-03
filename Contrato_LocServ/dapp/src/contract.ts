@@ -26,8 +26,8 @@ export async function createService(id: string, nombre: string, categoria: strin
       nativeToScVal(nombre, { type: 'string' }),
       nativeToScVal(categoria, { type: 'string' }),
       nativeToScVal(descripcion, { type: 'string' }),
-      nativeToScVal(disponibilidad, { type: 'i128' }),
-      nativeToScVal(precio, { type: 'i128' }),
+      nativeToScVal(BigInt(disponibilidad), { type: 'i128' }),
+      nativeToScVal(BigInt(precio), { type: 'i128' }),
     ],
     signAndSend: true,
   });
@@ -42,7 +42,7 @@ export async function createContract(id: string, id_servicio: string, id_usuario
       nativeToScVal(id_usuario, { type: 'string' }),
       nativeToScVal(fecha_inicio, { type: 'string' }),
       nativeToScVal(fecha_fin, { type: 'string' }),
-      nativeToScVal(monto, { type: 'i128' }),
+      nativeToScVal(BigInt(monto), { type: 'i128' }),
     ],
     signAndSend: true,
   });

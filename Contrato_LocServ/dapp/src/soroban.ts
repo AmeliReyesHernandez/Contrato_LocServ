@@ -3,8 +3,8 @@ import { isConnected, signTransaction, getAddress } from '@stellar/freighter-api
 
 const { Contract, TransactionBuilder, Networks, rpc } = StellarSdk;
 
-const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID as string;
-const RPC_URL = import.meta.env.VITE_RPC_URL as string;
+const CONTRACT_ID = (import.meta.env.VITE_CONTRACT_ID as string).trim();
+const RPC_URL = (import.meta.env.VITE_RPC_URL as string).trim();
 
 export const server = new rpc.Server(RPC_URL);
 
@@ -22,7 +22,16 @@ export async function invoke({ method, args = [], signAndSend = false }: { metho
 
   const addressResponse = await getAddress();
   const publicKey = addressResponse.address;
-  const sourceAccount = await server.getAccount(publicKey);
+
+  let sourceAccount;
+  try {
+    sourceAccount = await server.getAccount(publicKey);
+  } catch (e: any) {
+    if (e.message && e.message.includes('404')) {
+      throw new Error("Tu cuenta no existe en Testnet. Por favor usa el Friendbot de Stellar para fondearla primero.");
+    }
+    throw e;
+  }
 
   const contract = new Contract(CONTRACT_ID);
 
