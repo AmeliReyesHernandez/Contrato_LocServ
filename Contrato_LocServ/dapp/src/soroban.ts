@@ -8,7 +8,13 @@ const RPC_URL = import.meta.env.VITE_RPC_URL as string;
 
 export const server = new rpc.Server(RPC_URL);
 
-export async function invoke({ method, args = [], signAndSend = false }: { method: string, args?: any[], signAndSend?: boolean }) {
+interface TransactionResult {
+  hash: string;
+  status: string;
+  result?: any;
+}
+
+export async function invoke({ method, args = [], signAndSend = false }: { method: string, args?: any[], signAndSend?: boolean }): Promise<TransactionResult | any> {
   const connectedResponse = await isConnected();
   if (!connectedResponse.isConnected) {
     throw new Error("Freighter not connected");
@@ -20,8 +26,9 @@ export async function invoke({ method, args = [], signAndSend = false }: { metho
 
   const contract = new Contract(CONTRACT_ID);
 
-  const tx = new TransactionBuilder(sourceAccount, {
-    fee: '100',
+  // Build the transaction
+  let tx = new TransactionBuilder(sourceAccount, {
+    fee: '100000', // Increased fee for contract invocations
     networkPassphrase: Networks.TESTNET,
   })
     .addOperation(contract.call(method, ...args))
@@ -29,23 +36,86 @@ export async function invoke({ method, args = [], signAndSend = false }: { metho
     .build();
 
   if (signAndSend) {
-    const signResponse = await signTransaction(tx.toXDR(), {
-      networkPassphrase: Networks.TESTNET,
-    });
+    // First, simulate the transaction to prepare it
+    console.log('Simulating transaction...');
+    const simulationResponse = await server.simulateTransaction(tx);
 
-    const signedTx = TransactionBuilder.fromXDR(signResponse.signedTxXdr, Networks.TESTNET);
-    const response = await server.sendTransaction(signedTx);
+    console.log('Simulation response:', simulationResponse);
 
-    // Wait for confirmation
-    if (response.status === 'PENDING') {
-      let getResponse = await server.getTransaction(response.hash);
-      while (getResponse.status === 'NOT_FOUND') {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        getResponse = await server.getTransaction(response.hash);
+    // Check if simulation was successful
+    if (StellarSdk.rpc.Api.isSimulationSuccess(simulationResponse)) {
+      // Prepare the transaction with the simulation results
+      const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simulationResponse).build();
+
+      console.log('Transaction prepared, requesting signature...');
+
+      // Sign the transaction
+      const signResponse = await signTransaction(preparedTx.toXDR(), {
+        networkPassphrase: Networks.TESTNET,
+      });
+
+      const signedTx = TransactionBuilder.fromXDR(signResponse.signedTxXdr, Networks.TESTNET);
+
+      // Get the hash from the signed transaction (this is the correct hash)
+      const txHash = signedTx.hash().toString('hex');
+
+      console.log('Transaction hash:', txHash);
+      console.log('Sending transaction to network...');
+
+      const sendResponse = await server.sendTransaction(signedTx);
+
+      console.log('Transaction sent:', sendResponse);
+
+      // Wait for confirmation
+      if (sendResponse.status === 'PENDING') {
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max
+
+        console.log('Waiting for confirmation...');
+
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          try {
+            const getResponse = await server.getTransaction(txHash);
+
+            if (getResponse.status === 'SUCCESS') {
+              console.log('✅ Transaction confirmed:', getResponse);
+              return {
+                hash: txHash,
+                status: 'SUCCESS',
+                result: getResponse
+              };
+            } else if (getResponse.status === 'FAILED') {
+              console.error('❌ Transaction failed:', getResponse);
+              throw new Error('Transaction failed on blockchain');
+            }
+          } catch (e) {
+            // Transaction not found yet, continue waiting
+          }
+
+          attempts++;
+        }
+
+        // Timeout
+        console.warn('⏱️ Transaction timeout');
+        return {
+          hash: txHash,
+          status: 'TIMEOUT',
+          result: null
+        };
       }
-      return getResponse;
+
+      return {
+        hash: txHash,
+        status: sendResponse.status,
+        result: sendResponse
+      };
+    } else {
+      // Simulation failed
+      console.error('Simulation failed:', simulationResponse);
+      throw new Error(`Simulation failed: ${JSON.stringify(simulationResponse)}`);
     }
-    return response;
   }
 
   return server.simulateTransaction(tx);
