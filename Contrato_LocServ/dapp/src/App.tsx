@@ -75,12 +75,15 @@ export default function App() {
     setLogs((s) => [`[${new Date().toLocaleTimeString()}] ${t}`, ...s].slice(0, 100));
 
   const handleRegister = async () => {
-    if (!publicKey) return;
+    if (!publicKey) {
+      pushLog("⚠️ Por favor conecta tu wallet primero");
+      return;
+    }
     const txId = `REG-${Date.now()}`;
     try {
-      pushLog("Registrando usuario...");
+      pushLog("📝 Registrando usuario...");
       const response = await createUser(publicKey, "Usuario", "Demo", "Test", "demo@example.com", 123);
-      pushLog("Usuario registrado exitosamente!");
+      pushLog("✅ Usuario registrado exitosamente");
 
       // Add to transaction history
       setTransactions(prev => [{
@@ -92,14 +95,23 @@ export default function App() {
       }, ...prev]);
     } catch (e: any) {
       console.error(e);
-      pushLog(`Error al registrar: ${e.message}`);
-      setTransactions(prev => [{
-        id: txId,
-        type: 'register',
-        timestamp: Date.now(),
-        status: 'failed',
-        error: e.message
-      }, ...prev]);
+
+      // Check if it's a "user already exists" error
+      if (e.message && (e.message.includes('Error(Contract, #2)') || e.message.includes('Simulation failed'))) {
+        pushLog("⚠️ Este usuario ya está registrado en el contrato");
+        pushLog("💡 Cambia a otra cuenta en Freighter para crear un nuevo usuario");
+        // Don't add to history - this is expected behavior, not an error
+      } else {
+        pushLog(`❌ Error al registrar: ${e.message}`);
+        // Only add unexpected errors to history
+        setTransactions(prev => [{
+          id: txId,
+          type: 'register',
+          timestamp: Date.now(),
+          status: 'failed',
+          error: e.message
+        }, ...prev]);
+      }
     }
   };
 
