@@ -467,10 +467,15 @@ export default function App() {
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
         ))}
-        <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">{rating.toFixed(1)}</span>
+        <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">
+          {rating === 0 ? 'Sin calificaciones' : rating.toFixed(1)}
+        </span>
       </div>
     );
   }
+
+  // Combine demo services with user's services
+  const allServices = [...demoServices, ...myServices];
 
   function Dashboard() {
     const StatCard = ({ title, value, icon: Icon, delay = 0 }: { title: string, value: string | number, icon: ElementType, delay?: number }) => (
@@ -493,14 +498,14 @@ export default function App() {
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard title="Servicios Disponibles" value={demoServices.length} icon={ClipboardIcon} />
+          <StatCard title="Servicios Disponibles" value={allServices.length} icon={ClipboardIcon} />
           <StatCard title="Wallet Status" value={publicKey ? "Conectado" : "No Conectado"} icon={WalletIcon} delay={0.1} />
         </div>
 
         <div>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Servicios Destacados</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {demoServices.slice(0, 3).map((s, i) => (
+            {allServices.slice(0, 3).map((s, i) => (
               <motion.div
                 key={s.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -545,38 +550,50 @@ export default function App() {
       <div>
         <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Todos los Servicios</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {demoServices.map((s, i) => (
-            <motion.div
-              key={s.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-lg transition-shadow p-5 flex flex-col"
-            >
-              <div className="flex-grow">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg text-gray-800 dark:text-white leading-tight">{s.title}</h3>
-                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-full whitespace-nowrap">{s.price}</span>
-                </div>
+          {allServices.map((s, i) => {
+            // Check if this service belongs to current user
+            const isMyService = myServices.some(ms => ms.id === s.id);
 
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Por: {s.provider}</p>
-                  <StarRating rating={s.rating} />
-                </div>
-
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4">{s.desc}</p>
-              </div>
-
-              <motion.button
-                onClick={() => handleHire(s.id, s.price)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="mt-auto w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+            return (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.05 }}
+                className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-lg transition-shadow p-5 flex flex-col"
               >
-                Contratar
-              </motion.button>
-            </motion.div>
-          ))}
+                <div className="flex-grow">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-white leading-tight">{s.title}</h3>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-full whitespace-nowrap">{s.price}</span>
+                      {isMyService && (
+                        <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-full whitespace-nowrap">
+                          Tu servicio
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Por: {s.provider}</p>
+                    <StarRating rating={s.rating} />
+                  </div>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4">{s.desc}</p>
+                </div>
+
+                <motion.button
+                  onClick={() => handleHire(s.id, s.price)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="mt-auto w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  Contratar
+                </motion.button>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     );
@@ -597,7 +614,7 @@ export default function App() {
         desc: newService.desc,
         price: newService.price,
         provider: publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : "Tú",
-        rating: 5.0 // New services start with 5.0
+        rating: 0 // New services start with no rating
       };
 
       setMyServices(prev => [...prev, service]);
@@ -1052,7 +1069,7 @@ export default function App() {
         desc,
         price,
         provider: publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : "Tú",
-        rating: 5.0
+        rating: 0 // New services start with no rating
       };
 
       onSubmit(service);
