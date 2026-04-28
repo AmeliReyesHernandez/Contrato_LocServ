@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocServ API Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-6">
+    <div class="max-w-4xl w-full glass rounded-3xl p-8 shadow-2xl">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">LocServ Backend API</h1>
+                <p class="text-slate-400 mt-2">Conectado a Stellar Soroban Testnet</p>
+            </div>
+            <div id="status-badge" class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-semibold">
+                Sincronizando...
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Card 1: Contrato -->
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <span class="mr-2">📄</span> Contrato Inteligente
+                </h2>
+                <p class="text-xs font-mono text-slate-400 break-all bg-black/30 p-3 rounded-lg" id="contract-id">
+                    Cargando...
+                </p>
+            </div>
+
+            <!-- Card 2: Salud -->
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <span class="mr-2">⚡</span> Estado del Servidor
+                </h2>
+                <div id="health-data" class="text-sm text-slate-300">
+                    Consultando API...
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-10 flex gap-4">
+            <button onclick="checkHealth()" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold transition-all">Refrescar Estado</button>
+            <button onclick="getGreeting()" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-semibold transition-all">Probar Blockchain</button>
+        </div>
+
+        <div id="log" class="mt-8 bg-black/40 p-4 rounded-xl font-mono text-xs text-blue-300 h-32 overflow-y-auto">
+            > Sistema iniciado...
+        </div>
+    </div>
+
+    <script>
+        async function checkHealth() {
+            try {
+                const res = await fetch('/health');
+                const data = await res.json();
+                document.getElementById('health-data').innerHTML = `Mensaje: ${data.mensaje}<br>Ledger: ${new Date(data.timestamp).toLocaleTimeString()}`;
+                document.getElementById('status-badge').innerText = 'Online';
+                log('Health Check exitoso');
+            } catch (e) {
+                log('Error conectando a la API');
+            }
+        }
+
+        async function getGreeting() {
+            log('Consultando blockchain (función saludar)...');
+            try {
+                const res = await fetch('/usuario/demo-user');
+                const data = await res.json();
+                log('Blockchain responde: ' + JSON.stringify(data));
+            } catch (e) {
+                log('Error en la llamada blockchain');
+            }
+        }
+
+        function log(msg) {
+            const div = document.getElementById('log');
+            div.innerHTML += `<br>> ${msg}`;
+            div.scrollTop = div.scrollHeight;
+        }
+
+        // Carga inicial
+        fetch('/health').then(r => r.json()).then(d => {
+            document.getElementById('health-data').innerText = d.mensaje;
+            document.getElementById('status-badge').innerText = 'Online';
+        });
+        
+        // El contract ID lo ponemos manual o lo pedimos a la API
+        document.getElementById('contract-id').innerText = 'CCAULP76EYM2AKZLSCO3OFVSVAFHFIZDDX7ZDNBNVZZJTNMLW3IHOGZ6';
+    </script>
+</body>
+</html>
