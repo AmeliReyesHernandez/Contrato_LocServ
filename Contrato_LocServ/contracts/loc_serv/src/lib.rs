@@ -3,16 +3,25 @@
 use soroban_sdk::{contract, contractimpl, Env, Map, Vec, String, Error, Bytes, Symbol, symbol_short};
 use soroban_sdk::xdr::{ScErrorType, ScErrorCode};
 
+/// Contrato Inteligente Principal para la plataforma LocServ.
+/// Gestiona el registro de usuarios, creación de servicios y contratos entre partes.
 #[contract]
 pub struct LocServContract;
 
 #[contractimpl]
 impl LocServContract {
-    // FUNCIÓN BÁSICA DE PRÁCTICA
+    /// Función de prueba básica requerida por el taller.
     pub fn saludar(env: Env, nombre: String) -> String {
         nombre
     }
 
+    /// Registra un nuevo usuario en la blockchain.
+    /// 
+    /// **Lógica Compleja ("El Porqué"):** 
+    /// Utilizamos `env.storage().persistent()` en lugar de `temporary()` porque los 
+    /// perfiles de usuario deben sobrevivir a las actualizaciones del contrato y a la 
+    /// recolección de basura de la red Stellar. Además, verificamos si la clave ya 
+    /// existe para evitar la sobreescritura maliciosa de cuentas.
     pub fn crear_usuario(
         env: Env,
         id_usuario: String,
@@ -36,7 +45,7 @@ impl LocServContract {
         usuarios.set(id_usuario.clone(), (nombre.clone(), ag_patemo, ag_matemo, correo, direccion));
         env.storage().persistent().set(&key, &usuarios);
 
-        // EVENTO PARA EL TALLER
+        // Emitimos un evento para trazabilidad off-chain (Frontend)
         env.events().publish((Symbol::new(&env, "usuario_creado"), id_usuario), nombre);
 
         Ok(())
@@ -130,6 +139,13 @@ impl LocServContract {
         Ok(())
     }
 
+    /// Formaliza un contrato de prestación de servicio entre un cliente y un proveedor.
+    ///
+    /// **Lógica Compleja ("El Porqué"):**
+    /// Mantenemos el `monto_total` como tipo `i128` (y no tipos más pequeños) para prevenir 
+    /// desbordamientos (overflows) aritméticos al manejar cifras de criptomonedas (XLM), 
+    /// garantizando seguridad financiera. La verificación `contains_key` asegura que dos 
+    /// transacciones simultáneas no generen identificadores de contrato duplicados.
     pub fn crear_contrato(
         env: Env,
         id_contrato: String,
@@ -150,10 +166,10 @@ impl LocServContract {
             return Err(Error::from_type_and_code(ScErrorType::Contract, ScErrorCode::InvalidInput));
         }
 
-        contratos.set(id_contrato, (id_servicio, id_usuario, fecha_inicio, fecha_fin, monto_total));
+        contratos.set(id_contrato.clone(), (id_servicio, id_usuario, fecha_inicio, fecha_fin, monto_total));
         env.storage().persistent().set(&key, &contratos);
 
-        // EVENTO PARA EL TALLER
+        // Emitimos un evento de red para auditar la creación financiera del contrato
         env.events().publish((Symbol::new(&env, "contrato_realizado"), id_contrato), monto_total);
 
         Ok(())

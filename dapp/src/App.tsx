@@ -38,15 +38,8 @@ import { Transition, Dialog, Menu } from "@headlessui/react";
 // Types
 type NavKey = "dashboard" | "services" | "profile";
 
-// Data
-const demoServices = [
-  { id: "S1", title: "Electricista Profesional", desc: "Instalaciones y reparaciones eléctricas seguras.", price: "15", provider: "Juan Pérez", rating: 4.8, address: "GADC2E4ELUT4OMIWEEJKXX47IE7QDJDI7YCVOKZ62Q2XBTS2UAAQJ2ZU" },
-  { id: "S2", title: "Clases de Guitarra Acústica", desc: "Aprende desde cero. Todos los niveles.", price: "20", provider: "Elena García", rating: 5.0, address: "GC7TVDUFHPIXQJ3NGGQ6JKXVAWD76L2JR35MYKKHUONOSBK4PXRSNM2A" },
-  { id: "S3", title: "Plomería de Emergencia", desc: "Solución a fugas, atascos y más, 24/7.", price: "18", provider: "Roberto Torres", rating: 4.5, address: "GCKVHP6HDZFXSQAKLHXQJX7FWO33DN7X3BXXQZFEBSCPITCJIKG42EHD" },
-  { id: "S4", title: "Diseño Gráfico y Branding", desc: "Logos, publicidad y material de marca.", price: "50", provider: "Sofía Luna", rating: 4.9, address: "GBL3HPOLGDUUWGSEYJFLUDRN7JHGADK3MJAD3PKACGBRGRY7C5FVRTGL" },
-  { id: "S5", title: "Asesoría de Jardinería", desc: "Crea y mantén tu jardín ideal.", price: "12", provider: "Miguel Angel", rating: 4.2, address: "GDHE5XTTJTH5R3JRICV2JD6QMDFMUEZRSMA24XH3Y3S3PYSZE2UVGSE4" },
-  { id: "S6", title: "Reparación de Computadoras", desc: "Hardware y software, virus y lentitud.", price: "25", provider: "Andrés Ramos", rating: 4.7, address: "GA5VQEDB5N67U264SXOE6J5X72Q2MPKOWX7JQPERVRPOT27WIUM6M4GB" },
-];
+// Import API functions
+import { obtenerServicios } from "./api/contract";
 
 // Components
 function Logo() {
@@ -236,13 +229,13 @@ function Sidebar({ route, setRoute, sidebarOpen, setSidebarOpen, logs }: any) {
   );
 }
 
-function PageContent({ route, publicKey, pushLog, connectFreighter, disconnectWallet, handleHire }: any) {
+function PageContent({ route, publicKey, pushLog, connectFreighter, disconnectWallet, handleHire, services, loadingServices }: any) {
   return (
     <main className="flex-1 p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 overflow-y-auto">
       <AnimatePresence mode="wait">
         <motion.div key={route} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
-          {route === "dashboard" && <Dashboard publicKey={publicKey} pushLog={pushLog} handleHire={handleHire} />}
-          {route === "services" && <ServicesPage pushLog={pushLog} handleHire={handleHire} />}
+          {route === "dashboard" && <Dashboard publicKey={publicKey} pushLog={pushLog} handleHire={handleHire} services={services} loadingServices={loadingServices} />}
+          {route === "services" && <ServicesPage pushLog={pushLog} handleHire={handleHire} services={services} loadingServices={loadingServices} />}
           {route === "profile" && <ProfilePage publicKey={publicKey} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} />}
         </motion.div>
       </AnimatePresence>
@@ -250,7 +243,7 @@ function PageContent({ route, publicKey, pushLog, connectFreighter, disconnectWa
   );
 }
 
-function Dashboard({ publicKey, pushLog, handleHire }: any) {
+function Dashboard({ publicKey, pushLog, handleHire, services, loadingServices }: any) {
   const StatCard = ({ title, value, icon: Icon, delay = 0 }: any) => (
     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay }} className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm hover:shadow-lg transition-shadow flex items-center gap-4">
       <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 rounded-full">
@@ -262,49 +255,54 @@ function Dashboard({ publicKey, pushLog, handleHire }: any) {
       </div>
     </motion.div>
   );
-  
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard title="Servicios Disponibles" value={demoServices.length} icon={ClipboardIcon} />
+        <StatCard title="Servicios Disponibles" value={services.length} icon={ClipboardIcon} />
         <StatCard title="Wallet Status" value={publicKey ? "Conectado" : "No Conectado"} icon={WalletIcon} delay={0.1} />
       </div>
       <div>
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Servicios Destacados</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {demoServices.slice(0, 3).map((s, i) => (
-            <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-900 p-5 rounded-2xl shadow-sm flex flex-col">
-              <div className="flex-grow">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-white">{s.title}</h4>
-                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full">{s.price} XLM</span>
+        <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Servicios Destacados (API)</h3>
+        {loadingServices ? (
+          <p className="text-gray-500">Cargando servicios desde la API...</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.slice(0, 3).map((s, i) => (
+              <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-900 p-5 rounded-2xl shadow-sm flex flex-col">
+                <div className="flex-grow">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-bold text-lg text-gray-800 dark:text-white">{s.title}</h4>
+                    <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full">{s.price} XLM</span>
+                  </div>
+                  <p className="text-sm text-indigo-500 dark:text-indigo-400 font-medium mt-1">Por {s.provider}</p>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{s.desc}</p>
+                  <div className="mt-3"><StarRating rating={s.rating} /></div>
                 </div>
-                <p className="text-sm text-indigo-500 dark:text-indigo-400 font-medium mt-1">Por {s.provider}</p>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{s.desc}</p>
-                <div className="mt-3"><StarRating rating={s.rating} /></div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <button 
-                  onClick={() => handleHire(s)} 
-                  className="w-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 font-semibold py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-white transition-colors"
-                >
-                  Contratar (XLM)
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <button 
+                    onClick={() => handleHire(s)} 
+                    className="w-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 font-semibold py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-white transition-colors"
+                  >
+                    Contratar (XLM)
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function ServicesPage({ pushLog, handleHire }: any) {
+function ServicesPage({ pushLog, handleHire, services, loadingServices }: any) {
+  if (loadingServices) return <p className="text-gray-500">Cargando servicios desde la API...</p>;
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Todos los Servicios</h2>
+      <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Todos los Servicios (API)</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {demoServices.map((s, i) => (
+        {services.map((s, i) => (
           <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.05 }} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-5 flex flex-col items-center text-center">
             <div className="flex-grow">
               <h3 className="font-bold text-lg text-gray-800 dark:text-white">{s.title}</h3>
@@ -383,8 +381,27 @@ export default function App() {
     return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [successTxHash, setSuccessTxHash] = useState<string | null>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
 
   const pushLog = (t: string) => setLogs((s) => [`[${new Date().toLocaleTimeString()}] ${t}`, ...s].slice(0, 100));
+
+  const loadServices = async () => {
+    try {
+      setLoadingServices(true);
+      const data = await obtenerServicios();
+      setServices(data);
+      pushLog(`✅ ${data.length} servicios cargados desde la API`);
+    } catch (e: any) {
+      pushLog(`❌ Error cargando servicios: ${e.message}`);
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  useEffect(() => {
+    loadServices();
+  }, []);
 
   const connectFreighter = async () => {
     try {
@@ -552,7 +569,7 @@ export default function App() {
         <Sidebar route={route} setRoute={setRoute} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} logs={logs} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header route={route} themeDark={themeDark} setThemeDark={setThemeDark} publicKey={publicKey} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} setSidebarOpen={setSidebarOpen} sidebarOpen={sidebarOpen} />
-          <PageContent route={route} publicKey={publicKey} pushLog={pushLog} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} handleHire={handleHire} />
+          <PageContent route={route} publicKey={publicKey} pushLog={pushLog} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} handleHire={handleHire} services={services} loadingServices={loadingServices} />
         </div>
       </div>
 
@@ -581,12 +598,12 @@ export default function App() {
               <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">¡Pago Exitoso!</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">Tu transacción ha sido registrada en la red Stellar.</p>
               <a
-                href={`https://laboratory.stellar.org/#explorer/transactions/${successTxHash}?network=testnet`}
+                href={`https://stellar.expert/explorer/testnet/tx/${successTxHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mb-3"
               >
-                Ver en Stellar Lab
+                Ver en Stellar Expert
               </a>
               <button
                 onClick={() => setSuccessTxHash(null)}
