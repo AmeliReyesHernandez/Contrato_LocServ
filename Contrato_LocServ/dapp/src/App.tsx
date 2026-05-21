@@ -115,11 +115,64 @@ export default function App() {
     }
   };
 
+  const authenticateWithPasskey = async (): Promise<boolean> => {
+    try {
+      if (!window.PublicKeyCredential) {
+        alert("Tu navegador no soporta Passkeys o biometría (Accessly).");
+        return false;
+      }
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const userId = new Uint8Array(16);
+      window.crypto.getRandomValues(userId);
+
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: challenge,
+          rp: {
+            name: "LocServ - Accessly",
+          },
+          user: {
+            id: userId,
+            name: "usuario@locserv.com",
+            displayName: "Usuario LocServ",
+          },
+          pubKeyCredParams: [
+            { type: "public-key", alg: -7 },
+            { type: "public-key", alg: -257 },
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required",
+          },
+          timeout: 60000,
+        },
+      });
+
+      return !!credential;
+    } catch (error) {
+      console.error("Error en autenticación Passkey:", error);
+      return false;
+    }
+  };
+
   const handleHire = async (serviceId: string, price: string) => {
     if (!publicKey) {
       pushLog("Por favor conecta tu wallet primero");
       return;
     }
+    
+    pushLog("🔑 Verificando identidad con Passkey/Accessly...");
+    const isAuthenticated = await authenticateWithPasskey();
+    
+    if (!isAuthenticated) {
+      pushLog("❌ Autenticación cancelada o fallida. El pago no se realizará.");
+      return;
+    }
+    
+    pushLog("✅ Identidad confirmada. Procesando pago...");
+
     const contractId = `C-${Date.now()}`;
     const service = demoServices.find(s => s.id === serviceId);
     try {

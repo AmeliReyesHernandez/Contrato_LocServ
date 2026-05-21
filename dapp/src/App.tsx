@@ -229,14 +229,14 @@ function Sidebar({ route, setRoute, sidebarOpen, setSidebarOpen, logs }: any) {
   );
 }
 
-function PageContent({ route, publicKey, pushLog, connectFreighter, disconnectWallet, handleHire, services, loadingServices }: any) {
+function PageContent({ route, publicKey, pushLog, connectFreighter, disconnectWallet, handleHire, services, loadingServices, addServiceLocally }: any) {
   return (
     <main className="flex-1 p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 overflow-y-auto">
       <AnimatePresence mode="wait">
         <motion.div key={route} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
           {route === "dashboard" && <Dashboard publicKey={publicKey} pushLog={pushLog} handleHire={handleHire} services={services} loadingServices={loadingServices} />}
           {route === "services" && <ServicesPage pushLog={pushLog} handleHire={handleHire} services={services} loadingServices={loadingServices} />}
-          {route === "profile" && <ProfilePage publicKey={publicKey} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} />}
+          {route === "profile" && <ProfilePage publicKey={publicKey} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} services={services} pushLog={pushLog} addServiceLocally={addServiceLocally} />}
         </motion.div>
       </AnimatePresence>
     </main>
@@ -271,7 +271,7 @@ function Dashboard({ publicKey, pushLog, handleHire, services, loadingServices }
             {services.slice(0, 3).map((s, i) => (
               <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-900 p-5 rounded-2xl shadow-sm flex flex-col">
                 <div className="flex-grow">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start gap-2 flex-wrap">
                     <h4 className="font-bold text-lg text-gray-800 dark:text-white">{s.title}</h4>
                     <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full">{s.price} XLM</span>
                   </div>
@@ -328,7 +328,51 @@ function ServicesPage({ pushLog, handleHire, services, loadingServices }: any) {
   );
 }
 
-function ProfilePage({ publicKey, connectFreighter, disconnectWallet }: any) {
+function ProfilePage({ publicKey, connectFreighter, disconnectWallet, services, pushLog, addServiceLocally }: any) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newService, setNewService] = useState({ title: '', desc: '', price: '' });
+
+  const handleAddService = async (e: any) => {
+    e.preventDefault();
+    if (!publicKey) return;
+    try {
+      const newServiceId = "S" + Date.now();
+      const res = await fetch('http://localhost:3000/servicio/crear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_servicio: newServiceId,
+          nombre: newService.title,
+          categoria: "General",
+          descripcion: newService.desc,
+          disponibilidad: true,
+          precio: newService.price
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addServiceLocally({
+          id: newServiceId,
+          title: newService.title,
+          desc: newService.desc,
+          price: newService.price,
+          provider: "Tú (" + publicKey.slice(0, 4) + '...' + publicKey.slice(-4) + ")",
+          address: publicKey,
+          rating: 0
+        });
+        pushLog("✅ Servicio creado (backend).");
+        setShowAddForm(false);
+        setNewService({ title: '', desc: '', price: '' });
+      } else {
+        pushLog("❌ Error: " + data.error);
+      }
+    } catch (err: any) {
+      pushLog("❌ Error conectando con el backend: " + err.message);
+    }
+  };
+
+  const userServices = services ? services.filter((s: any) => s.address === publicKey) : [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-1 bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-8 flex flex-col items-center text-center">
@@ -350,19 +394,57 @@ function ProfilePage({ publicKey, connectFreighter, disconnectWallet }: any) {
       </div>
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2"><ClipboardIcon className="w-6 h-6 text-indigo-500" /> Mis Servicios</h3>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><ClipboardIcon className="w-6 h-6 text-indigo-500" /> Mis Servicios</h3>
+            {publicKey && (
+              <button 
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+              >
+                {showAddForm ? 'Cancelar' : 'Agregar Servicio'}
+              </button>
+            )}
+          </div>
+          
           {publicKey ? (
-            <div className="space-y-4">
-              {demoServices.slice(0, 2).map(s => (
-                <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
-                  <div className="w-12 h-12 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center"><CubeTransparentIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" /></div>
-                  <div className="flex-grow"><h4 className="font-bold text-gray-800 dark:text-white">{s.title}</h4><p className="text-sm text-gray-500 dark:text-gray-400">{s.price}</p></div>
-                  <StarRating rating={s.rating} />
+            <div className="space-y-6">
+              {showAddForm && (
+                <form onSubmit={handleAddService} className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-800 space-y-4">
+                  <h4 className="font-bold text-gray-800 dark:text-white">Nuevo Servicio</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título</label>
+                    <input required type="text" value={newService.title} onChange={e => setNewService({...newService, title: e.target.value})} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Plomería" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                    <textarea required value={newService.desc} onChange={e => setNewService({...newService, desc: e.target.value})} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Descripción del servicio" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio (XLM)</label>
+                    <input required type="number" value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. 10" />
+                  </div>
+                  <button type="submit" className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors">Guardar Servicio</button>
+                </form>
+              )}
+
+              {userServices.length > 0 ? (
+                <div className="space-y-4">
+                  {userServices.map((s: any) => (
+                    <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                      <div className="flex items-center gap-4 w-full sm:w-auto flex-grow">
+                        <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center"><CubeTransparentIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" /></div>
+                        <div className="flex-grow"><h4 className="font-bold text-gray-800 dark:text-white">{s.title}</h4><p className="text-sm text-gray-500 dark:text-gray-400">{s.price} XLM</p></div>
+                      </div>
+                      <div className="self-end sm:self-auto"><StarRating rating={s.rating || 5} /></div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="text-center py-8 text-gray-500">No has agregado ningún servicio aún.</div>
+              )}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">Conecta tu wallet para ver tus servicios.</div>
+            <div className="text-center py-12 text-gray-500">Conecta tu wallet para ver o agregar tus servicios.</div>
           )}
         </div>
       </div>
@@ -444,9 +526,86 @@ export default function App() {
     pushLog("Desconectado.");
   };
 
+  const authenticateWithPasskey = async (): Promise<boolean> => {
+    try {
+      if (!window.PublicKeyCredential) {
+        alert("Tu navegador no soporta Passkeys o biometría (Accessly).");
+        return false;
+      }
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const existingCredentialIdBase64 = localStorage.getItem("locserv_passkey_id");
+
+      if (existingCredentialIdBase64) {
+        // Authenticate with existing passkey
+        const credentialId = Uint8Array.from(atob(existingCredentialIdBase64), c => c.charCodeAt(0));
+        
+        const credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            allowCredentials: [{
+              id: credentialId,
+              type: "public-key",
+            }],
+            userVerification: "required",
+            timeout: 60000,
+          },
+        });
+        return !!credential;
+      } else {
+        // First time: Create new passkey
+        const userId = new Uint8Array(16);
+        window.crypto.getRandomValues(userId);
+
+        const credential: any = await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: {
+              name: "LocServ - Accessly",
+            },
+            user: {
+              id: userId,
+              name: "usuario@locserv.com",
+              displayName: "Usuario LocServ",
+            },
+            pubKeyCredParams: [
+              { type: "public-key", alg: -7 },
+              { type: "public-key", alg: -257 },
+            ],
+            authenticatorSelection: {
+              userVerification: "required",
+            },
+            timeout: 60000,
+          },
+        });
+
+        if (credential && credential.rawId) {
+          const idArray = new Uint8Array(credential.rawId);
+          const base64Id = btoa(Array.from(idArray).map(b => String.fromCharCode(b)).join(''));
+          localStorage.setItem("locserv_passkey_id", base64Id);
+          return true;
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error("Error en autenticación Passkey:", error);
+      return false;
+    }
+  };
+
   const handleHire = async (service: any) => {
     if (!publicKey) {
       pushLog("❌ Conecta tu wallet primero");
+      return;
+    }
+
+    pushLog("🔑 Verificando identidad con Passkey/Accessly...");
+    const isAuthenticated = await authenticateWithPasskey();
+    
+    if (!isAuthenticated) {
+      pushLog("❌ Autenticación cancelada o fallida. El pago no se realizará.");
       return;
     }
 
@@ -569,7 +728,7 @@ export default function App() {
         <Sidebar route={route} setRoute={setRoute} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} logs={logs} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header route={route} themeDark={themeDark} setThemeDark={setThemeDark} publicKey={publicKey} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} setSidebarOpen={setSidebarOpen} sidebarOpen={sidebarOpen} />
-          <PageContent route={route} publicKey={publicKey} pushLog={pushLog} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} handleHire={handleHire} services={services} loadingServices={loadingServices} />
+          <PageContent route={route} publicKey={publicKey} pushLog={pushLog} connectFreighter={connectFreighter} disconnectWallet={disconnectWallet} handleHire={handleHire} services={services} loadingServices={loadingServices} addServiceLocally={(s: any) => setServices(prev => [s, ...prev])} />
         </div>
       </div>
 
