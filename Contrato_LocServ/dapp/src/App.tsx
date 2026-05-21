@@ -280,27 +280,39 @@ export default function App() {
       }
 
       pushLog("Iniciando conexión con Freighter...");
-      const connectedResponse = await isConnected();
+      
+      let connected = false;
+      try {
+        const isConnResult = await isConnected();
+        connected = typeof isConnResult === 'object' ? (isConnResult as any).isConnected : !!isConnResult;
+      } catch (e) {
+        connected = false;
+      }
 
-      if (!connectedResponse.isConnected) {
+      if (!connected) {
         pushLog("⚠️ Freighter no está instalado o detectado");
         return;
       }
 
-      // Intentar obtener la dirección
-      let addressResponse = await getAddress();
-
-      // Si no obtenemos dirección, forzamos la solicitud de acceso
-      if (!addressResponse || !addressResponse.address) {
-        pushLog("Solicitando permiso de acceso al sitio...");
-        await requestAccess();
-        // Intentar obtener dirección nuevamente después de pedir permisos
-        addressResponse = await getAddress();
+      pushLog("Solicitando permiso de acceso al sitio...");
+      const accessResult = await requestAccess();
+      
+      let address = "";
+      const addressResult = await getAddress();
+      
+      if (addressResult && typeof addressResult === 'object') {
+        if ((addressResult as any).address) {
+          address = (addressResult as any).address;
+        } else if ((addressResult as any).error) {
+          pushLog(`Error de Freighter: ${(addressResult as any).error}`);
+        }
+      } else if (typeof addressResult === 'string') {
+        address = addressResult;
       }
 
-      if (addressResponse && addressResponse.address) {
-        pushLog(`Wallet conectada: ${addressResponse.address}`);
-        setPublicKey(addressResponse.address);
+      if (address) {
+        pushLog(`Wallet conectada: ${address}`);
+        setPublicKey(address);
       } else {
         pushLog("❌ No se pudo obtener la clave pública. Por favor abre Freighter y autoriza este sitio.");
       }
@@ -319,12 +331,26 @@ export default function App() {
     // Auto-connect on mount if Freighter is available
     const autoConnect = async () => {
       try {
-        const connectedResponse = await isConnected();
-        if (connectedResponse.isConnected) {
-          const addressResponse = await getAddress();
-          if (addressResponse.address) {
-            setPublicKey(addressResponse.address);
-            pushLog(`Wallet auto-conectada: ${addressResponse.address}`);
+        let connected = false;
+        try {
+          const isConnResult = await isConnected();
+          connected = typeof isConnResult === 'object' ? (isConnResult as any).isConnected : !!isConnResult;
+        } catch (e) {
+          connected = false;
+        }
+
+        if (connected) {
+          const addressResult = await getAddress();
+          let address = "";
+          if (addressResult && typeof addressResult === 'object' && (addressResult as any).address) {
+            address = (addressResult as any).address;
+          } else if (typeof addressResult === 'string') {
+            address = addressResult;
+          }
+
+          if (address) {
+            setPublicKey(address);
+            pushLog(`Wallet auto-conectada: ${address}`);
           }
         }
       } catch (err) {
