@@ -241,9 +241,9 @@ export default function App() {
       }
     } catch (e: any) {
       console.error(e);
-      if (e.message && e.message.includes('Simulation failed')) {
+      if (e.message && (e.message.includes('Simulation failed') || e.message.includes('Account not found'))) {
         pushLog(`✅ ¡Pago Exitoso (Modo Demo)!`);
-        pushLog(` Nota: El contrato Soroban arrojó Simulation Failed, pero simulamos el éxito para tu presentación.`);
+        pushLog(` Nota: El contrato Soroban arrojó un error esperado (${e.message.includes('Account not found') ? 'Cuenta sin fondos/no creada' : 'Simulation Failed'}), pero simulamos el éxito para tu presentación.`);
         setCurrentTxHash("DEMO-" + contractId);
         setShowTxModal(true);
         setTransactions(prev => [{
@@ -268,6 +268,7 @@ export default function App() {
         status: 'failed',
         error: e.message
       }, ...prev]);
+      }
     }
   };
 
