@@ -488,36 +488,50 @@ export default function App() {
   const connectFreighter = async () => {
     try {
       pushLog("Buscando Freighter...");
-      const connected = await isConnected();
+      const extractAddress = (res: any): string => {
+        if (res && typeof res === 'object') {
+          if (res.address) return res.address;
+          if (res.error) pushLog(`Error de Freighter: ${res.error}`);
+          return "";
+        } else if (typeof res === 'string') {
+          return res;
+        }
+        return "";
+      };
+      
+      let connected = false;
+      try {
+        const isConnResult = await isConnected();
+        connected = typeof isConnResult === 'object' ? (isConnResult as any).isConnected : !!isConnResult;
+      } catch (e) {
+        connected = false;
+      }
+
       if (!connected) {
-        pushLog("❌ Freighter no está instalado. Instálalo desde https://freighter.app");
+        pushLog("❌ Freighter no está instalado o detectado");
         return;
       }
 
-      pushLog("Solicitando acceso...");
-      const res = await requestAccess();
-      
-      // According to @stellar/freighter-api docs, requestAccess returns { address: string } or { error: string }
-      let address = "";
-      if (res && typeof res === 'object') {
-        if ((res as any).address) {
-          address = (res as any).address;
-        } else if ((res as any).error) {
-          throw new Error((res as any).error.message || 'Error al conectar');
-        }
-      } else if (typeof res === 'string') {
-        address = res;
+      pushLog("Obteniendo dirección de la wallet...");
+      let addressResult = await getAddress();
+      let address = extractAddress(addressResult);
+
+      if (!address) {
+        pushLog("Solicitando permiso de acceso al sitio...");
+        await requestAccess();
+        addressResult = await getAddress();
+        address = extractAddress(addressResult);
       }
 
       if (address) {
+        pushLog(`Wallet conectada: ${address}`);
         setPublicKey(address);
-        pushLog(`✅ Conectado: ${address.slice(0, 6)}...`);
       } else {
-        pushLog("⚠️ No se pudo obtener la dirección. Asegúrate de desbloquear Freighter.");
+        pushLog("❌ No se pudo obtener la clave pública. Por favor abre Freighter y autoriza este sitio.");
       }
-    } catch (e: any) {
-      console.error("Freighter Error:", e);
-      pushLog(`❌ Error: ${e.message || "Acceso denegado"}`);
+    } catch (err: any) {
+      console.error(err);
+      pushLog(`Error al conectar con Freighter: ${err?.message || 'Desconocido'}`);
     }
   };
 
