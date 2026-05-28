@@ -92,12 +92,20 @@ function Header({ route, themeDark, setThemeDark, publicKey, connectFreighter, d
         <h1 className="text-xl font-semibold text-gray-800 dark:text-white capitalize">{route}</h1>
       </div>
       <div className="flex items-center gap-4">
-        <button
+        <motion.button
           onClick={() => setThemeDark((v: boolean) => !v)}
-          className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 transition-all duration-300"
         >
-          {themeDark ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6 text-indigo-500" />}
-        </button>
+          <motion.div
+            initial={false}
+            animate={{ rotate: themeDark ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {themeDark ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6 text-indigo-500" />}
+          </motion.div>
+        </motion.button>
         <div className="flex items-center gap-2">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -336,8 +344,12 @@ function ProfilePage({ publicKey, connectFreighter, disconnectWallet, services, 
     e.preventDefault();
     if (!publicKey) return;
     try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
       const newServiceId = "S" + Date.now();
-      const res = await fetch('http://localhost:3000/servicio/crear', {
+      
+      pushLog("📡 Enviando servicio al backend...");
+      
+      const res = await fetch(`${backendUrl}/servicio/crear`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -349,6 +361,12 @@ function ProfilePage({ publicKey, connectFreighter, disconnectWallet, services, 
           precio: newService.price
         })
       });
+      
+      if (!res.ok) {
+        pushLog(`❌ Error del servidor (${res.status}): ${res.statusText}`);
+        return;
+      }
+      
       const data = await res.json();
       if (data.success) {
         addServiceLocally({
@@ -364,10 +382,14 @@ function ProfilePage({ publicKey, connectFreighter, disconnectWallet, services, 
         setShowAddForm(false);
         setNewService({ title: '', desc: '', price: '' });
       } else {
-        pushLog("❌ Error: " + data.error);
+        pushLog("❌ Error: " + (data.error || "No especificado"));
       }
     } catch (err: any) {
-      pushLog("❌ Error conectando con el backend: " + err.message);
+      if (err.message.includes('Failed to fetch')) {
+        pushLog("❌ No se puede conectar al backend. ¿Está corriendo en " + (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000') + "?");
+      } else {
+        pushLog("❌ Error: " + err.message);
+      }
     }
   };
 
